@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>221 — Simulation App ↔ CNRD-221</title>
+<meta name="theme-color" content="#003D1A">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--g:#006633;--r:#CC0000;--b:#1A4A8A;--pur:#534AB7;--amb:#B8860B;--teal:#0F6E56;--dark:#0a0f0a;--panel:#0d1a0d;--border:#1a3a1a;--text:#e8f5e8;--muted:#4a7a4a;--sub:#c8e8c8}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0f0a;overflow:hidden}
+
+/* ═══ TOPBAR ═══ */
+.topbar{background:#001a0a;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:44px;flex-shrink:0}
+.tb-logo{font-size:17px;font-weight:700;color:#fff;letter-spacing:1px}.tb-logo span{color:#4ade80}
+.tb-center{display:flex;align-items:center;gap:12px}
+.tb-badge{font-size:11px;padding:4px 12px;border-radius:20px;font-weight:600}
+.tb-badge.sim{background:rgba(251,191,36,.15);color:#fbbf24;border:0.5px solid rgba(251,191,36,.3)}
+.tb-badge.live{background:rgba(74,222,128,.15);color:#4ade80;border:0.5px solid rgba(74,222,128,.3);display:flex;align-items:center;gap:5px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.tb-clock{font-size:12px;color:#4ade80;font-variant-numeric:tabular-nums}
+.tb-right{font-size:11px;color:var(--muted)}
+
+/* ═══ SPLIT LAYOUT ═══ */
+.split{display:grid;grid-template-columns:1fr 4px 1fr;height:calc(100vh - 44px)}
+.divider{background:linear-gradient(to bottom,var(--border),#4ade80,var(--border));position:relative;display:flex;align-items:center;justify-content:center}
+.divider-pill{background:#001a0a;border:1px solid #2a6a2a;border-radius:20px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:10}
+.arrow-up{color:#4ade80;font-size:10px;line-height:1}
+.arrow-dn{color:#fbbf24;font-size:10px;line-height:1}
+
+/* ═══ APP CITOYENNE ═══ */
+.app-side{background:#f0f2f5;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.app-label{background:#006633;color:#fff;font-size:10px;font-weight:700;text-align:center;padding:4px;letter-spacing:1px;text-transform:uppercase}
+.phone-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative}
+
+/* barre de statut */
+.app-sb{background:#006633;padding:6px 16px;display:flex;justify-content:space-between}
+.app-sb span{color:#fff;font-size:11px;font-weight:500}
+.app-nav{background:#006633;padding:10px 16px 14px;color:#fff}
+.app-nav h1{font-size:18px;font-weight:700}
+.app-nav p{font-size:11px;opacity:.8;margin-top:2px}
+
+/* SOS zone */
+.sos-zone{background:#006633;padding:18px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.sos-btn{width:130px;height:130px;border-radius:50%;background:#CC0000;border:5px solid rgba(255,255,255,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:transform .12s;box-shadow:0 0 0 8px rgba(204,0,0,.2);user-select:none}
+.sos-btn:active{transform:scale(.93)}
+.sos-btn span{color:#fff;font-size:11px;font-weight:700;margin-top:3px}
+.sos-ico{font-size:40px}
+
+/* grid rapide */
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 10px 4px}
+.qcard{background:#fff;border-radius:11px;padding:10px;display:flex;flex-direction:column;gap:3px;cursor:pointer;border:1px solid #eee;transition:transform .1s;user-select:none}
+.qcard:active{transform:scale(.96)}
+.qc-ico{font-size:20px}
+.qc-lbl{font-size:11px;font-weight:600;color:#1a1a1a;line-height:1.2}
+.qc-sub{font-size:9px;color:#888}
+.qc-red .qc-ico{color:#CC0000}.qc-teal .qc-ico{color:#0F6E56}.qc-pur .qc-ico{color:#534AB7}.qc-grn .qc-ico{color:#006633}
+
+/* modale SOS */
+.modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;z-index:20}
+.modal{background:#fff;border-radius:18px 18px 0 0;padding:18px 16px 24px;width:100%}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:3px;color:#1a1a1a}
+.modal p{font-size:11px;color:#666;margin-bottom:12px}
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.tbtn{padding:9px 5px;border-radius:8px;border:2px solid #eee;background:#fafafa;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit;transition:all .15s}
+.tbtn:active{transform:scale(.95)}
+.tbtn span{font-size:9px;font-weight:600;color:#333}
+.tbtn.sel{border-color:#CC0000;background:#fff5f5}
+.btn-p{width:100%;padding:12px;background:#CC0000;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit}
+.btn-p:disabled{opacity:.4;cursor:not-allowed}
+.btn-s{width:100%;padding:10px;background:#f5f5f5;color:#555;border:none;border-radius:10px;font-size:12px;cursor:pointer;margin-top:6px;font-family:inherit}
+
+/* envoi */
+.sending-screen{position:absolute;inset:0;background:#006633;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:30;text-align:center;padding:24px}
+.pulse-ring{width:100px;height:100px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(204,0,0,.4)}70%{box-shadow:0 0 0 22px rgba(204,0,0,0)}}
+.send-ico{font-size:38px}
+.send-timer{font-size:36px;font-weight:700;color:#CC0000;background:#fff;padding:0 14px;border-radius:8px}
+.send-h3{font-size:16px;font-weight:700;color:#fff}
+.send-p{font-size:12px;color:rgba(255,255,255,.7);line-height:1.5}
+.gps-badge{background:rgba(255,255,255,.12);border-radius:8px;padding:7px 14px;display:flex;align-items:center;gap:6px;font-size:12px;color:#4ade80;font-weight:500}
+.dispatch-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px;width:100%}
+.dc-label{font-size:9px;color:rgba(255,255,255,.5);letter-spacing:.8px;margin-bottom:4px}
+.dc-type{font-size:12px;font-weight:600;color:#fff}
+.dc-eta{font-size:10px;color:#4ade80;margin-top:3px}
+.btn-end{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 20px;font-size:12px;color:#fff;cursor:pointer;font-family:inherit;margin-top:4px}
+
+/* SMS notification app */
+.sms-notif{position:absolute;top:52px;left:0;right:0;background:#1C1C1E;margin:8px;border-radius:12px;padding:11px 14px;display:flex;gap:9px;align-items:flex-start;z-index:40;animation:slideDown .35s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+.sms-app-ico{width:32px;height:32px;border-radius:8px;background:#006633;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.sms-content{flex:1}
+.sms-header{display:flex;justify-content:space-between;margin-bottom:2px}
+.sms-from{font-size:11px;font-weight:600;color:#fff}
+.sms-time{font-size:10px;color:#888}
+.sms-body{font-size:11px;color:#ccc;line-height:1.4}
+
+/* bnav */
+.bnav{background:#fff;border-top:1px solid #eee;display:flex;margin-top:auto}
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 2px 10px;cursor:pointer;gap:2px;border:none;background:none;font-family:inherit}
+.bni-ico{font-size:20px;color:#999}
+.bni span{font-size:9px;color:#999;font-weight:500}
+.bni.active .bni-ico,.bni.active span{color:#006633}
+
+/* ═══ CNRD CÔTÉ ═══ */
+.cnrd-side{background:var(--dark);display:flex;flex-direction:column;overflow:hidden}
+.cnrd-label{background:#001a0a;border-bottom:1px solid var(--border);color:#4ade80;font-size:10px;font-weight:700;text-align:center;padding:4px;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:6px}
+.cnrd-label .live-dot{width:5px;height:5px}
+
+.cnrd-topbar{background:#001a0a;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:6px 14px;flex-shrink:0}
+.cnrd-op{font-size:10px;color:var(--muted)}
+.cnrd-stats{display:flex;gap:12px}
+.cs{font-size:10px;font-weight:700;display:flex;align-items:center;gap:4px}
+.cs.r{color:#f87171}.cs.a{color:#fbbf24}.cs.g{color:#4ade80}
+
+.cnrd-body{flex:1;display:grid;grid-template-columns:220px 1fr;overflow:hidden}
+
+/* queue cnrd */
+.cnrd-queue{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.cq-head{padding:8px 10px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.cq-label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+.cq-badge{font-size:9px;font-weight:700;background:rgba(248,113,113,.15);color:#f87171;border:0.5px solid rgba(248,113,113,.3);padding:2px 7px;border-radius:20px}
+.cq-list{overflow-y:auto;flex:1}
+.cq-list::-webkit-scrollbar{width:2px}.cq-list::-webkit-scrollbar-thumb{background:var(--border)}
+.cqi{padding:8px 10px;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;gap:7px;align-items:flex-start;border-left:2px solid transparent;transition:all .1s}
+.cqi:hover{background:#111f11}
+.cqi.active{background:#0f2a1f;border-left-color:#4ade80}
+.cqi.crit{border-left-color:#f87171;animation:newAlert .5s ease}
+.cqi.urg{border-left-color:#fbbf24}
+.cqi.done{opacity:.5}
+@keyframes newAlert{0%{background:#2d1515}100%{background:transparent}}
+.cqi-ico{font-size:14px;flex-shrink:0;line-height:1.6}
+.cqi-info{flex:1;min-width:0}
+.cqi-t{font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cqi-s{font-size:9px;color:var(--muted);margin-top:1px}
+.cqi-time{font-size:9px;color:var(--muted);flex-shrink:0;font-variant-numeric:tabular-nums}
+.badge-new-c{font-size:8px;font-weight:700;background:rgba(248,113,113,.2);color:#f87171;border:0.5px solid rgba(248,113,113,.3);padding:1px 5px;border-radius:10px;margin-top:3px;display:inline-block}
+.badge-prog-c{font-size:8px;font-weight:700;background:rgba(251,191,36,.15);color:#fbbf24;border:0.5px solid rgba(251,191,36,.3);padding:1px 5px;border-radius:10px;margin-top:3px;display:inline-block}
+.badge-done-c{font-size:8px;font-weight:700;background:rgba(74,222,128,.1);color:#4ade80;border:0.5px solid rgba(74,222,128,.2);padding:1px 5px;border-radius:10px;margin-top:3px;display:inline-block}
+
+/* fiche cnrd */
+.cnrd-fiche{background:var(--dark);display:flex;flex-direction:column;overflow:hidden}
+.cf-tabs{display:flex;background:var(--panel);border-bottom:0.5px solid var(--border);padding:0 12px;flex-shrink:0}
+.cf-tab{padding:8px 11px;font-size:10px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;font-family:inherit;transition:all .15s;white-space:nowrap}
+.cf-tab.active{color:var(--text);border-bottom-color:#4ade80}
+.cf-panel{display:none;flex:1;overflow-y:auto;padding:10px 12px}
+.cf-panel.active{display:block}
+.cf-panel::-webkit-scrollbar{width:2px}.cf-panel::-webkit-scrollbar-thumb{background:var(--border)}
+
+/* alerte banner cnrd */
+.ab{border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;animation:pulseIn .4s ease}
+@keyframes pulseIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}
+.ab.crit{background:#1a0a0a;border:1px solid #5a1a1a}
+.ab.urg{background:#1a150a;border:1px solid #5a3a0a}
+.ab-i{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.ab-i.crit{background:#2d1515}.ab-i.urg{background:#2d200a}
+.ab-type{font-size:12px;font-weight:700}.ab-type.crit{color:#f87171}.ab-type.urg{color:#fbbf24}
+.ab-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.prio{padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;margin-left:auto;flex-shrink:0;align-self:flex-start}
+.prio.crit{background:#3d1515;color:#f87171;border:0.5px solid #5a2020}
+.prio.urg{background:#3d2a00;color:#fbbf24;border:0.5px solid #5a3a00}
+.prio.ok{background:#0f2d0f;color:#4ade80;border:0.5px solid #1a4a1a}
+
+/* bloc infos */
+.bl{background:var(--panel);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.bl-title{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.7px;text-transform:uppercase;margin-bottom:8px}
+.fr{display:grid;grid-template-columns:100px 1fr;gap:4px;margin-bottom:5px}
+.fl{font-size:10px;color:var(--muted)}
+.fv{font-size:11px;font-weight:500;color:var(--text)}
+.fv.r{color:#f87171}.fv.g{color:#4ade80}.fv.mono{font-family:monospace;font-size:10px;color:#60a5fa}
+.src-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;background:#0a1a2d;color:#60a5fa;border:0.5px solid #1a3a5a}
+
+/* btns cnrd */
+.btn-row{display:flex;gap:6px;margin-bottom:8px}
+.cb{flex:1;padding:8px 8px;border-radius:7px;border:0.5px solid var(--border);background:var(--panel);font-size:10px;font-weight:700;cursor:pointer;color:var(--text);font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s;white-space:nowrap}
+.cb:hover{background:#1a3a1a}
+.cb.pr{background:#003D1A;border-color:#006633;color:#4ade80}
+.cb.pr:hover{background:#004d22}
+.cb.dg{background:#2d1515;border-color:#5a2020;color:#f87171}
+.cb.bl{background:#0a1a2d;border-color:#1a3a5a;color:#60a5fa}
+
+/* timeline cnrd */
+.tl-item{display:flex;gap:8px;margin-bottom:8px}
+.tl-d{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.tl-d.g{background:#4ade80}.tl-d.b{background:#60a5fa}.tl-d.a{background:#fbbf24}.tl-d.r{background:#f87171}.tl-d.x{background:var(--border)}
+.tl-t{font-size:9px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tl-tx{font-size:10px;color:var(--sub);margin-top:1px;line-height:1.5}
+
+/* notif overlay cnrd */
+.cnrd-notif{position:absolute;top:8px;right:8px;z-index:100;display:flex;flex-direction:column;gap:6px;pointer-events:none;max-width:240px}
+.cn{background:var(--panel);border:1px solid #2a6a2a;border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text);pointer-events:all;animation:nSlide .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.cn.crit{border-color:#5a2020;background:#1a0a0a}
+.cn.urg{border-color:#5a3a0a;background:#1a150a}
+@keyframes nSlide{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.cn-title{font-size:10px;font-weight:700;color:#4ade80;margin-bottom:3px}
+.cn.crit .cn-title{color:#f87171}
+.cn.urg .cn-title{color:#fbbf24}
+.cn-body{font-size:10px;color:var(--sub);line-height:1.4}
+
+/* flux live central */
+.flux-log{position:absolute;bottom:0;left:0;right:0;background:rgba(0,26,10,.92);border-top:1px solid var(--border);padding:6px 12px;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:8px;backdrop-filter:blur(4px);flex-shrink:0}
+.flux-dot{width:5px;height:5px;border-radius:50%;background:#4ade80;animation:blink 1s infinite;flex-shrink:0}
+.flux-msg{color:var(--sub);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+
+/* intro overlay */
+.intro{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
+.intro-card{background:#0d1a0d;border:1px solid #2a6a2a;border-radius:16px;padding:32px 36px;max-width:520px;text-align:center}
+.intro-card h2{font-size:22px;font-weight:700;color:#4ade80;margin-bottom:8px}
+.intro-card p{font-size:14px;color:var(--sub);line-height:1.7;margin-bottom:20px}
+.intro-steps{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;text-align:left}
+.step-card{background:#111f11;border:0.5px solid var(--border);border-radius:10px;padding:12px}
+.step-n{font-size:11px;font-weight:700;color:#4ade80;margin-bottom:4px}
+.step-tx{font-size:11px;color:var(--sub);line-height:1.5}
+.btn-start{background:#006633;color:#fff;border:none;border-radius:10px;padding:14px 36px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-start:hover{background:#007a3d}
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div class="intro" id="intro">
+  <div class="intro-card">
+    <h2>🇸🇳 Simulation 221</h2>
+    <p>Démonstration interactive du flux complet entre l'<strong style="color:#4ade80">application citoyenne</strong> et le <strong style="color:#4ade80">Centre National de Réception et de Dispatch (CNRD-221)</strong>.</p>
+    <div class="intro-steps">
+      <div class="step-card">
+        <div class="step-n">① Citoyenne — App 221</div>
+        <div class="step-tx">Appuyez sur SOS, Mode Témoin, Refus de soins ou Trajet Sécurisé sur l'application mobile.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-n">② Transmission automatique</div>
+        <div class="step-tx">L'alerte avec GPS, type et description arrive au CNRD-221 en moins de 2 secondes.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-n">③ Opérateur CNRD</div>
+        <div class="step-tx">L'opérateur dispatche les secours, oriente vers un hôpital ou escalade selon le protocole.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-n">④ Retour citoyen</div>
+        <div class="step-tx">Un SMS de confirmation avec numéro de dossier et ETA des secours est envoyé automatiquement.</div>
+      </div>
+    </div>
+    <button class="btn-start" onclick="startSim()">Lancer la simulation →</button>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <span class="tb-logo">221 <span>·</span> Simulation Interactive</span>
+  <div class="tb-center">
+    <span class="tb-badge sim">⚡ Mode simulation</span>
+    <span class="tb-badge live"><span class="live-dot"></span>Flux temps réel actif</span>
+    <span class="tb-clock" id="clock">--:--:--</span>
+  </div>
+  <span class="tb-right">App citoyenne ↔ CNRD-221 · Flux synchronisé</span>
+</div>
+
+<div class="split">
+
+  <!-- ═══ APP CITOYENNE ═══ -->
+  <div class="app-side" id="app-side">
+    <div class="app-label">📱 Application citoyenne 221</div>
+    <div class="phone-wrap" id="phone-wrap">
+
+      <!-- SMS notif -->
+      <div class="sms-notif" id="sms-notif" style="display:none">
+        <div class="sms-app-ico">🇸🇳</div>
+        <div class="sms-content">
+          <div class="sms-header">
+            <span class="sms-from">221 — Urgence Sénégal</span>
+            <span class="sms-time" id="sms-time">maintenant</span>
+          </div>
+          <div class="sms-body" id="sms-body">Votre alerte a bien été reçue.</div>
+        </div>
+      </div>
+
+      <!-- Écran principal -->
+      <div id="scr-home" style="display:flex;flex-direction:column;height:100%">
+        <div class="app-sb"><span>9:41</span><span>Orange SN 🇸🇳</span></div>
+        <div class="app-nav"><h1>🇸🇳 221</h1><p>Numéro d'Urgence National Unique</p></div>
+        <div class="sos-zone">
+          <button class="sos-btn" onclick="openSOS()">
+            <div class="sos-ico">🆘</div>
+            <span>APPELER 221</span>
+          </button>
+          <p style="color:rgba(255,255,255,.65);font-size:10px;text-align:center">Appuyez en cas d'urgence · 25 FCFA</p>
+        </div>
+        <div class="qgrid">
+          <div class="qcard qc-red" onclick="openSilent()"><div class="qc-ico">🤫</div><div class="qc-lbl">Alerte Silencieuse</div><div class="qc-sub">SOS discret</div></div>
+          <div class="qcard qc-teal" onclick="openWitness()"><div class="qc-ico">👁</div><div class="qc-lbl">Mode Témoin</div><div class="qc-sub">Je vois une urgence</div></div>
+          <div class="qcard qc-pur" onclick="openTrajet()"><div class="qc-ico">🛣</div><div class="qc-lbl">Trajet Sécurisé</div><div class="qc-sub">Alerte si absent</div></div>
+          <div class="qcard qc-grn" onclick="openRefus()"><div class="qc-ico">🏥</div><div class="qc-lbl">Refus de soins</div><div class="qc-sub">Signaler un refus</div></div>
+          <div class="qcard" style="border-color:#B8860B" onclick="openVol()"><div class="qc-ico" style="color:#B8860B">🦺</div><div class="qc-lbl">Volontaire 221</div><div class="qc-sub">Signaler disponibilité</div></div>
+          <div class="qcard" style="border-color:#1A4A8A" onclick="openGuide()"><div class="qc-ico" style="color:#1A4A8A">💊</div><div class="qc-lbl">Premiers Secours</div><div class="qc-sub">Guides d'urgence</div></div>
+        </div>
+        <div style="margin:4px 10px 8px;background:#fff;border-radius:9px;padding:8px 10px;border:1px solid #eee;display:flex;align-items:center;gap:7px">
+          <div style="width:6px;height:6px;border-radius:50%;background:#22c55e;animation:blink 2s infinite"></div>
+          <p style="font-size:10px;color:#555">Centre 221 opérationnel · 47 opérateurs</p>
+        </div>
+        <div class="bnav">
+          <button class="bni active"><div class="bni-ico">🏠</div><span>Accueil</span></button>
+          <button class="bni"><div class="bni-ico">🗺</div><span>Carte</span></button>
+          <button class="bni"><div class="bni-ico">📞</div><span>Numéros</span></button>
+          <button class="bni"><div class="bni-ico">👥</div><span>Volontaires</span></button>
+        </div>
+      </div>
+
+      <!-- Modal SOS -->
+      <div class="modal-overlay" id="modal-sos" style="display:none">
+        <div class="modal">
+          <h3>Type d'urgence</h3>
+          <p>Sélectionnez pour un dispatch prioritaire</p>
+          <div class="type-grid">
+            <button class="tbtn" onclick="selType(this,'Urgence médicale','🚑','crit')"><span style="font-size:20px">🚑</span><span>Médical</span></button>
+            <button class="tbtn" onclick="selType(this,'Incendie','🔥','crit')"><span style="font-size:20px">🔥</span><span>Incendie</span></button>
+            <button class="tbtn" onclick="selType(this,'Sécurité','🛡','urg')"><span style="font-size:20px">🛡</span><span>Sécurité</span></button>
+            <button class="tbtn" onclick="selType(this,'Accident route','🚗','crit')"><span style="font-size:20px">🚗</span><span>Accident</span></button>
+            <button class="tbtn" onclick="selType(this,'Inondation','🌊','urg')"><span style="font-size:20px">🌊</span><span>Inondation</span></button>
+            <button class="tbtn" onclick="selType(this,'Autre urgence','❗','urg')"><span style="font-size:20px">❗</span><span>Autre</span></button>
+          </div>
+          <button class="btn-p" id="btn-sos-send" disabled onclick="sendAlert('SOS géolocalisé')">
+            🆘 <span id="sos-send-lbl">Sélectionner un type</span>
+          </button>
+          <button class="btn-s" onclick="closeModals()">Annuler</button>
+        </div>
+      </div>
+
+      <!-- Modal Silent -->
+      <div class="modal-overlay" id="modal-silent" style="display:none">
+        <div class="modal">
+          <h3>🤫 Alerte Silencieuse</h3>
+          <p>Impossible de parler. Position GPS transmise automatiquement.</p>
+          <div class="type-grid">
+            <button class="tbtn" onclick="selType(this,'Agression','🆘','crit')"><span style="font-size:20px">🆘</span><span>Agression</span></button>
+            <button class="tbtn" onclick="selType(this,'Violence domestique','🏠','urg')"><span style="font-size:20px">🏠</span><span>Violence dom.</span></button>
+            <button class="tbtn" onclick="selType(this,'Urgence médicale','🚑','crit')"><span style="font-size:20px">🚑</span><span>Médical</span></button>
+            <button class="tbtn" onclick="selType(this,'Autre','❗','urg')"><span style="font-size:20px">❗</span><span>Autre</span></button>
+          </div>
+          <button class="btn-p" id="btn-sil-send" disabled onclick="sendAlert('Alerte silencieuse')" style="background:#1A4A8A">
+            🤫 <span id="sil-send-lbl">Sélectionner un type</span>
+          </button>
+          <button class="btn-s" onclick="closeModals()">Annuler</button>
+        </div>
+      </div>
+
+      <!-- Modal Témoin -->
+      <div class="modal-overlay" id="modal-witness" style="display:none">
+        <div class="modal">
+          <h3>👁 Mode Témoin</h3>
+          <p>Je signale une urgence dont je suis témoin</p>
+          <div class="type-grid">
+            <button class="tbtn" onclick="selType(this,'Urgence médicale','🚑','crit')"><span style="font-size:20px">🚑</span><span>Médical</span></button>
+            <button class="tbtn" onclick="selType(this,'Incendie','🔥','crit')"><span style="font-size:20px">🔥</span><span>Incendie</span></button>
+            <button class="tbtn" onclick="selType(this,'Accident','🚗','crit')"><span style="font-size:20px">🚗</span><span>Accident</span></button>
+            <button class="tbtn" onclick="selType(this,'Agression','🛡','urg')"><span style="font-size:20px">🛡</span><span>Agression</span></button>
+          </div>
+          <div style="background:#f0f4ff;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:10px;color:#1A4A8A">
+            Votre position GPS sera transmise comme position du signalement.
+          </div>
+          <button class="btn-p" id="btn-wit-send" disabled onclick="sendAlert('Mode Témoin')" style="background:#0F6E56">
+            👁 <span id="wit-send-lbl">Sélectionner le type</span>
+          </button>
+          <button class="btn-s" onclick="closeModals()">Annuler</button>
+        </div>
+      </div>
+
+      <!-- Modal Refus -->
+      <div class="modal-overlay" id="modal-refus" style="display:none">
+        <div class="modal">
+          <h3>🏥 Refus de soins</h3>
+          <p>Signaler un établissement qui refuse une urgence</p>
+          <div style="background:#fff0f0;border-radius:8px;padding:9px 11px;margin-bottom:10px;border:1px solid #ffd0d0">
+            <div style="font-size:11px;font-weight:700;color:#CC0000;margin-bottom:4px">⚡ Appelez le 221 d'abord</div>
+            <div style="font-size:10px;color:#888">L'opérateur vous oriente vers une structure disponible immédiatement.</div>
+          </div>
+          <div style="margin-bottom:10px">
+            <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Motif du refus</div>
+            <div class="type-grid">
+              <button class="tbtn" onclick="selType(this,'Refus financier','💰','urg')"><span style="font-size:18px">💰</span><span>Financier</span></button>
+              <button class="tbtn" onclick="selType(this,'Refus administratif','📋','urg')"><span style="font-size:18px">📋</span><span>Administratif</span></button>
+              <button class="tbtn" onclick="selType(this,'Saturation','🏥','urg')"><span style="font-size:18px">🏥</span><span>Saturé</span></button>
+              <button class="tbtn" onclick="selType(this,'Sans motif','❓','crit')"><span style="font-size:18px">❓</span><span>Sans motif</span></button>
+            </div>
+          </div>
+          <button class="btn-p" id="btn-ref-send" disabled onclick="sendAlert('Signalement refus soins')" style="background:#534AB7">
+            📤 <span id="ref-send-lbl">Sélectionner le motif</span>
+          </button>
+          <button class="btn-s" onclick="closeModals()">Annuler</button>
+        </div>
+      </div>
+
+      <!-- Modal Trajet -->
+      <div class="modal-overlay" id="modal-trajet" style="display:none">
+        <div class="modal">
+          <h3>🛣 Trajet Sécurisé</h3>
+          <p>Alerte automatique si je ne reviens pas dans le délai</p>
+          <div style="margin-bottom:8px">
+            <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Type de situation</div>
+            <div class="type-grid">
+              <button class="tbtn" onclick="selType(this,'Trajet nocturne','🌙','urg')"><span style="font-size:18px">🌙</span><span>Trajet nocturne</span></button>
+              <button class="tbtn" onclick="selType(this,'Zone inondable','🌊','urg')"><span style="font-size:18px">🌊</span><span>Zone inondable</span></button>
+              <button class="tbtn" onclick="selType(this,'Chantier / zone isolée','🏗','urg')"><span style="font-size:18px">🏗</span><span>Zone isolée</span></button>
+              <button class="tbtn" onclick="selType(this,'Baignade / natation','🏊','urg')"><span style="font-size:18px">🏊</span><span>Baignade</span></button>
+            </div>
+          </div>
+          <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Contact de confiance</div>
+          <input type="tel" id="trajet-contact" placeholder="+221 7X XXX XX XX" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-family:inherit;font-size:12px;margin-bottom:8px">
+          <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Durée avant alerte automatique</div>
+          <select style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-family:inherit;font-size:12px;margin-bottom:9px" id="trajet-dur">
+            <option value="15">15 minutes</option>
+            <option value="30" selected>30 minutes</option>
+            <option value="60">1 heure</option>
+            <option value="120">2 heures</option>
+          </select>
+          <div style="background:#f0f4ff;border-radius:8px;padding:9px 11px;margin-bottom:10px;font-size:10px;color:#1A4A8A;line-height:1.5">
+            Si vous ne désactivez pas dans le délai, votre contact et le CNRD-221 reçoivent votre position GPS automatiquement.
+          </div>
+          <button class="btn-p" onclick="activateTrajet()" style="background:#534AB7">
+            🛣 Activer Trajet Sécurisé
+          </button>
+          <button class="btn-s" onclick="closeModals()">Annuler</button>
+        </div>
+      </div>
+
+
+      <!-- Modal Volontaire -->
+      <div class="modal-overlay" id="modal-vol" style="display:none">
+        <div class="modal">
+          <h3>🦺 Volontaire 221</h3>
+          <p>Signalez votre disponibilité à intervenir en premier secours</p>
+          <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Votre compétence</div>
+          <div class="type-grid" style="margin-bottom:8px">
+            <button class="tbtn" onclick="selType(this,'Secouriste certifié PSC1/PSC2','🚑','urg')"><span style="font-size:18px">🚑</span><span>Secouriste</span></button>
+            <button class="tbtn" onclick="selType(this,'Médecin / Infirmier','🩺','urg')"><span style="font-size:18px">🩺</span><span>Médecin/Infirmier</span></button>
+            <button class="tbtn" onclick="selType(this,'Pompier volontaire','🚒','urg')"><span style="font-size:18px">🚒</span><span>Pompier vol.</span></button>
+            <button class="tbtn" onclick="selType(this,'Psychologue de crise','🧠','urg')"><span style="font-size:18px">🧠</span><span>Psychologue</span></button>
+          </div>
+          <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Rayon d'intervention</div>
+          <select id="vol-rayon" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-family:inherit;font-size:12px;margin-bottom:8px">
+            <option>500m autour de moi</option>
+            <option selected>1 km autour de moi</option>
+            <option>3 km autour de moi</option>
+            <option>Dakar entier</option>
+          </select>
+          <div style="background:#E8F5EE;border-radius:8px;padding:9px 11px;margin-bottom:10px;font-size:10px;color:#006633;line-height:1.5">
+            Votre position GPS et disponibilité sont transmises au CNRD-221. Vous serez alerté si une urgence proche correspond à votre compétence.
+          </div>
+          <button class="btn-p" id="btn-vol-send" disabled onclick="sendAlert('Disponibilité volontaire')" style="background:#006633">
+            🦺 <span id="vol-send-lbl">Sélectionner une compétence</span>
+          </button>
+          <button class="btn-s" onclick="closeModals()">Annuler</button>
+        </div>
+      </div>
+
+      <!-- Modal Guide -->
+      <div class="modal-overlay" id="modal-guide" style="display:none">
+        <div class="modal">
+          <h3>💊 Guide Premiers Secours</h3>
+          <p>Procédures d'urgence en attendant les secours</p>
+          <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:12px">
+            <div style="background:#fff0f0;border-radius:8px;padding:10px;border-left:3px solid #CC0000">
+              <div style="font-size:11px;font-weight:700;color:#CC0000;margin-bottom:4px">🫀 Arrêt cardiaque</div>
+              <div style="font-size:10px;color:#555;line-height:1.6">1. Appelez le 221 — 2. Allongez la victime — 3. 30 compressions thoraciques + 2 insufflations — 4. Continuez jusqu'aux secours</div>
+            </div>
+            <div style="background:#fff8e6;border-radius:8px;padding:10px;border-left:3px solid #B8860B">
+              <div style="font-size:11px;font-weight:700;color:#B8860B;margin-bottom:4px">🩸 Hémorragie</div>
+              <div style="font-size:10px;color:#555;line-height:1.6">1. Appelez le 221 — 2. Comprimez fort avec tissu propre — 3. Maintenez sans relâcher — 4. Ne pas retirer le tissu</div>
+            </div>
+            <div style="background:#f0f4ff;border-radius:8px;padding:10px;border-left:3px solid #1A4A8A">
+              <div style="font-size:11px;font-weight:700;color:#1A4A8A;margin-bottom:4px">🌊 Noyade</div>
+              <div style="font-size:10px;color:#555;line-height:1.6">1. Appelez le 221 — 2. Ne pas entrer sans équipement — 3. Sortez la victime, allongez sur le dos — 4. RCP si inconsciente</div>
+            </div>
+          </div>
+          <button class="btn-s" onclick="closeModals()">Fermer</button>
+        </div>
+      </div>
+      <!-- Écran envoi -->
+      <div class="sending-screen" id="scr-sending" style="display:none">
+        <div class="pulse-ring"><div class="send-ico">📡</div></div>
+        <div class="send-timer" id="send-timer">3</div>
+        <div class="send-h3">Connexion au CNRD-221</div>
+        <div class="send-p">Votre alerte est transmise.<br>Un opérateur vous prend en charge.</div>
+        <div class="gps-badge">📍 Position GPS transmise · Dakar</div>
+        <div class="dispatch-card" id="dispatch-card">
+          <div class="dc-label">DISPATCH EN COURS</div>
+          <div class="dc-type" id="dispatch-type">Urgence médicale → SAMU National</div>
+          <div class="dc-eta" id="dispatch-eta">Secours en route · ETA &lt; 8 min</div>
+        </div>
+        <button class="btn-end" onclick="endSending()">Terminer la simulation</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ DIVISEUR ═══ -->
+  <div class="divider">
+    <div class="divider-pill">
+      <div class="arrow-up">→</div>
+      <div style="font-size:8px;color:#4ade80;writing-mode:vertical-rl;text-orientation:mixed;letter-spacing:1px;margin:4px 0">FLUX</div>
+      <div class="arrow-dn">←</div>
+    </div>
+  </div>
+
+  <!-- ═══ CNRD ═══ -->
+  <div class="cnrd-side" style="position:relative">
+    <div class="cnrd-label"><span class="live-dot"></span>CNRD-221 · Interface Opérateur CAD</div>
+    <div class="cnrd-topbar">
+      <span class="cnrd-op">OP-07 · Aminata DIALLO · Poste 3</span>
+      <div class="cnrd-stats">
+        <span class="cs r">🔴 <span id="c-new">0</span> nouvelles</span>
+        <span class="cs a">🟡 <span id="c-prog">0</span> en cours</span>
+        <span class="cs g">✅ <span id="c-done">0</span> résolues</span>
+      </div>
+    </div>
+    <div class="cnrd-body">
+      <div class="cnrd-queue">
+        <div class="cq-head">
+          <span class="cq-label">File d'attente</span>
+          <span class="cq-badge" id="cq-count">0 alerte</span>
+        </div>
+        <div class="cq-list" id="cq-list">
+          <div style="padding:20px 10px;text-align:center;font-size:11px;color:var(--muted)">
+            En attente d\'alertes...<br>Utilisez l\'application → pour simuler
+          </div>
+        </div>
+      </div>
+      <div class="cnrd-fiche">
+        <div class="cf-tabs">
+          <button class="cf-tab active" onclick="cfTab('fiche',this)">Fiche</button>
+          <button class="cf-tab" onclick="cfTab('timeline',this)">Chronologie</button>
+          <button class="cf-tab" onclick="cfTab('ressources',this)">Ressources</button>
+        </div>
+        <div class="cf-panel active" id="cfp-fiche">
+          <div id="cnrd-empty" style="padding:30px 16px;text-align:center;font-size:11px;color:var(--muted)">
+            <div style="font-size:32px;margin-bottom:10px">📡</div>
+            <div style="color:var(--sub);font-weight:600;margin-bottom:6px">CNRD-221 prêt</div>
+            <div>Aucune alerte active.<br>Simulez une urgence depuis l'application.</div>
+          </div>
+          <div id="cnrd-fiche-content" style="display:none"></div>
+        </div>
+        <div class="cf-panel" id="cfp-timeline">
+          <div class="bl">
+            <div class="bl-title">Chronologie des événements</div>
+            <div id="tl-list">
+              <div style="font-size:10px;color:var(--muted)">Aucun événement pour le moment.</div>
+            </div>
+          </div>
+        </div>
+        <div class="cf-panel" id="cfp-ressources">
+          <div class="bl">
+            <div class="bl-title">Ressources disponibles</div>
+            <div id="res-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flux-log">
+      <div class="flux-dot"></div>
+      <div class="flux-msg" id="flux-msg">Système CNRD-221 opérationnel · En attente d'alertes entrantes</div>
+    </div>
+    <div class="cnrd-notif" id="cnrd-notif"></div>
+  </div>
+
+</div>
+
+<script>
+// ═══ STATE ═══
+let dossierCount = 46;
+let alerts = [];
+let selectedAlert = null;
+let timeline = [];
+let sendTimerInt = null;
+
+// Par-mode: chaque modal a ses propres variables
+let modeState = {
+  sos:     { type:'', ico:'', pcls:'', btnId:'btn-sos-send', lblId:'sos-send-lbl', def:'Sélectionner un type' },
+  silent:  { type:'', ico:'', pcls:'', btnId:'btn-sil-send', lblId:'sil-send-lbl', def:'Sélectionner un type' },
+  witness: { type:'', ico:'', pcls:'', btnId:'btn-wit-send', lblId:'wit-send-lbl', def:'Sélectionner le type' },
+  refus:   { type:'', ico:'', pcls:'', btnId:'btn-ref-send', lblId:'ref-send-lbl', def:'Sélectionner le motif' },
+  vol:     { type:'', ico:'', pcls:'', btnId:'btn-vol-send', lblId:'vol-send-lbl', def:'Sélectionner une compétence' },
+};
+let currentMode = '';  // 'sos'|'silent'|'witness'|'refus'|'trajet'|'vol'
+let trajetContact = '';
+let trajetDur = 30;
+let lastAlertMode = '';
+
+const RESOURCES = [
+  {ico:'🚑',cls:'samu',name:'SAMU-01 · Dakar Centre',det:'Ambulance médicalisée · 2,1 km',st:'Disponible',ok:true},
+  {ico:'🚑',cls:'samu',name:'SAMU-03 · Plateau',det:'SMUR · 3,4 km',st:'Disponible',ok:true},
+  {ico:'🚒',cls:'fire',name:'BNSP-Dieuppeul',det:'Fourgon pompe · 1,8 km',st:'Disponible',ok:true},
+  {ico:'🚒',cls:'fire',name:'BNSP-Médina',det:'En route · ETA 5 min',st:'En route',ok:false},
+  {ico:'🚔',cls:'police',name:'Police Plateau · GP-07',det:'Patrouille · 0,9 km',st:'Disponible',ok:true},
+  {ico:'🏥',cls:'samu',name:'CHU Le Dantec',det:'3 lits urgences dispo',st:'Disponible',ok:true},
+  {ico:'🏥',cls:'samu',name:'Hôpital Principal',det:'1 lit urgences dispo',st:'Disponible',ok:true},
+  {ico:'🏥',cls:'fire',name:'CHU Fann',det:'Urgences saturées',st:'Saturé',ok:false},
+];
+
+// ═══ INIT ═══
+function startSim(){
+  document.getElementById('intro').style.display='none';
+  renderResources();
+  setInterval(tickClock, 1000);
+  tickClock();
+}
+
+function tickClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('fr-FR');
+}
+
+// ═══ OUVERTURE MODALS ═══
+function openSOS()     { openModal('sos','modal-sos'); }
+function openSilent()  { openModal('silent','modal-silent'); }
+function openWitness() { openModal('witness','modal-witness'); }
+function openRefus()   { openModal('refus','modal-refus'); }
+function openTrajet()  { openModal('trajet','modal-trajet'); }
+function openVol()     { openModal('vol','modal-vol'); }
+
+function openModal(mode, modalId){
+  closeModals();
+  currentMode = mode;
+  document.getElementById(modalId).style.display = 'flex';
+}
+
+function closeModals(){
+  ['modal-sos','modal-silent','modal-witness','modal-refus','modal-trajet','modal-vol'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+  // Reset tous les types par mode
+  Object.keys(modeState).forEach(m => {
+    modeState[m].type = '';
+    modeState[m].ico  = '';
+    modeState[m].pcls = '';
+    const btnEl = document.getElementById(modeState[m].btnId);
+    if(btnEl) btnEl.disabled = true;
+    const lblEl = document.getElementById(modeState[m].lblId);
+    if(lblEl) lblEl.textContent = modeState[m].def;
+  });
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('sel'));
+  currentMode = '';
+}
+
+// ═══ SÉLECTION TYPE (par mode courant) ═══
+function selType(btn, type, ico, pcls){
+  // Déselectionner uniquement les tbtn du modal courant
+  const modal = btn.closest('.modal-overlay');
+  if(modal) modal.querySelectorAll('.tbtn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+
+  const m = modeState[currentMode];
+  if(!m) return;
+  m.type = type;
+  m.ico  = ico;
+  m.pcls = pcls;
+
+  const btnEl = document.getElementById(m.btnId);
+  if(btnEl) btnEl.disabled = false;
+  const lblEl = document.getElementById(m.lblId);
+  if(lblEl) lblEl.textContent = 'Envoyer · ' + type;
+}
+
+// ═══ TRAJET SÉCURISÉ (bouton direct, pas selType) ═══
+function activateTrajet(){
+  const contact = document.getElementById('trajet-contact') ? document.getElementById('trajet-contact').value.trim() : '';
+  const dur = document.getElementById('trajet-dur') ? document.getElementById('trajet-dur').value : '30';
+  // Lire la situation depuis le bouton sélectionné dans modal-trajet
+  const selBtn = document.querySelector('#modal-trajet .tbtn.sel span:last-child');
+  const sit = selBtn ? selBtn.textContent : 'Trajet général';
+
+  trajetContact = contact || '+221 7X XXX XX XX (non renseigné)';
+  trajetDur = dur;
+
+  closeModals();
+  doSendAnimation('Trajet Sécurisé', sit, 'urg', sit);
+}
+
+// ═══ ENVOI VOLONTAIRE ═══
+function sendVol(){
+  const m = modeState['vol'];
+  if(!m.type){ alert('Sélectionnez une compétence.'); return; }
+  const rayon = document.getElementById('vol-rayon') ? document.getElementById('vol-rayon').value : '1 km';
+  closeModals();
+  doSendAnimation('Disponibilité volontaire', m.type, 'info', m.type, rayon);
+}
+
+// ═══ ENVOI DEPUIS MODAL ═══
+function sendFromModal(mode){
+  const m = modeState[mode];
+  if(!m || !m.type) return;
+  const type  = m.type;
+  const ico   = m.ico;
+  const pcls  = m.pcls;
+  closeModals();
+  doSendAnimation(
+    mode === 'sos'     ? 'SOS géolocalisé'        :
+    mode === 'silent'  ? 'Alerte silencieuse'       :
+    mode === 'witness' ? 'Mode Témoin'              :
+    mode === 'refus'   ? 'Signalement refus soins'  :
+                         mode,
+    type, pcls, type
+  );
+}
+
+// Appelé par les boutons HTML via sendAlert(mode)
+function sendAlert(mode){
+  if(mode === 'Disponibilité volontaire'){ sendVol(); return; }
+  const mKey = mode === 'SOS géolocalisé' ? 'sos'
+             : mode === 'Alerte silencieuse' ? 'silent'
+             : mode === 'Mode Témoin' ? 'witness'
+             : mode === 'Signalement refus soins' ? 'refus'
+             : null;
+  if(mKey) sendFromModal(mKey);
+}
+
+// ═══ ANIMATION ENVOI ═══
+function doSendAnimation(label, type, pcls, displayType, extra){
+  lastAlertMode = label;
+  document.getElementById('scr-sending').style.display = 'flex';
+
+  const dispatchMap = {
+    'SOS géolocalisé'       : { d: type + ' → SAMU National + Police', eta:'Secours en route · ETA < 8 min' },
+    'Alerte silencieuse'    : { d: type + ' → Police + SAMU discret',   eta:'Patrouille en route · ETA < 5 min' },
+    'Mode Témoin'           : { d: type + ' → CNRD dispatch adapté',    eta:'Secours en route · ETA < 8 min' },
+    'Signalement refus soins':{ d: 'Refus ' + type + ' → Min. Santé + CNRD', eta:'Orientation alternative en cours' },
+    'Trajet Sécurisé'       : { d: 'Trajet sécurisé · ' + type,         eta:'Alerte auto si pas de retour dans ' + trajetDur + ' min' },
+    'Disponibilité volontaire':{ d: type + ' · Rayon : ' + (extra||'1km'), eta:'Disponibilité transmise au CNRD-221' },
+  };
+  const disp = dispatchMap[label] || { d: type + ' → CNRD-221', eta:'En cours de traitement' };
+  document.getElementById('dispatch-type').textContent = disp.d;
+  document.getElementById('dispatch-eta').textContent  = disp.eta;
+
+  let n = 3;
+  document.getElementById('send-timer').textContent = n;
+  if(sendTimerInt) clearInterval(sendTimerInt);
+  sendTimerInt = setInterval(()=>{
+    n--;
+    document.getElementById('send-timer').textContent = n;
+    if(n <= 0){
+      clearInterval(sendTimerInt);
+      setTimeout(()=>createCNRDAlert(label, type, pcls), 600);
+    }
+  }, 1000);
+}
+
+// ═══ CRÉATION ALERTE CNRD ═══
+function createCNRDAlert(mode, type, pcls){
+  dossierCount++;
+  const num = String(dossierCount).padStart(4,'0');
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('fr-FR');
+  const ts = now.toLocaleDateString('fr-FR') + ' ' + timeStr;
+
+  const icoMap = {
+    'SOS géolocalisé':'🚑', 'Alerte silencieuse':'🛡', 'Mode Témoin':'👁',
+    'Signalement refus soins':'🏥', 'Trajet Sécurisé':'🛣', 'Disponibilité volontaire':'🦺',
+  };
+  const sigMap = {
+    'SOS géolocalisé':'SOS géolocalisé · Application 221',
+    'Alerte silencieuse':'Alerte Silencieuse · Application 221',
+    'Mode Témoin':'Mode Témoin · Signalement citoyen',
+    'Signalement refus soins':'Module Refus de Soins · Application 221',
+    'Trajet Sécurisé':'Trajet Sécurisé · Alerte automatique',
+    'Disponibilité volontaire':'Volontaire 221 · Disponibilité déclarée',
+  };
+
+  const addrs = ['Av. Cheikh Anta Diop, Plateau','Médina, Rue 18','Sacré-Cœur 3','Sicap Liberté','Parcelles Assainies, U17','Ouakam, Cité Comico','HLM 6, Grand Yoff'];
+  const gpsList = ['14.6937°N, 17.4441°W','14.6892°N, 17.4367°W','14.7023°N, 17.4512°W','14.7012°N, 17.4388°W','14.7234°N, 17.4289°W','14.7089°N, 17.4667°W'];
+
+  const alertPcls = (mode === 'Trajet Sécurisé' || mode === 'Signalement refus soins' || mode === 'Mode Témoin' || mode === 'Disponibilité volontaire') ? 'urg' : pcls || 'urg';
+
+  const alert = {
+    id: num, mode, ico: icoMap[mode] || '❗',
+    type: type || mode,
+    pcls: alertPcls,
+    sig: sigMap[mode] || 'App 221',
+    gps: gpsList[Math.floor(Math.random() * gpsList.length)],
+    addr: addrs[Math.floor(Math.random() * addrs.length)],
+    ts, timeStr, status: 'new', elapsed: 0,
+    trajetContact: mode === 'Trajet Sécurisé' ? trajetContact : null,
+    trajetDur: mode === 'Trajet Sécurisé' ? trajetDur : null,
+  };
+
+  alerts.unshift(alert);
+  selectedAlert = alert;
+  timeline = [];
+  addTL('b', timeStr, 'App 221 : ' + mode + ' · Type : "' + type + '" · Position GPS transmise');
+  addTL('b', timeStr, 'Réception CNRD-221 · Dossier #221-2026-' + num + ' créé automatiquement');
+  addTL('a', timeStr, 'Classification automatique : ' + alertPcls.toUpperCase() + ' · ' + type);
+  addTL('', timeStr, 'Géolocalisation AML : ' + alert.gps + ' · Précision ±8m');
+  addTL('', timeStr, 'Notification OP-07 · Alerte assignée · Poste 3');
+  if(mode === 'Trajet Sécurisé'){
+    addTL('a', timeStr, 'Contact de confiance enregistré : ' + trajetContact + ' · Durée : ' + trajetDur + ' min');
+  }
+  if(mode === 'Disponibilité volontaire'){
+    addTL('g', timeStr, 'Volontaire ajouté au réseau 221 · Compétence : ' + type + ' · En attente d\'activation');
+  }
+
+  updateCounters();
+  renderQueue();
+  renderFiche();
+  renderTimeline();
+  cfTab('fiche', document.querySelector('.cf-tab'));
+  updateFlux('🔴 NOUVELLE ALERTE #221-2026-' + num + ' · ' + type + ' (' + mode + ') · ' + alert.addr);
+  cnrdNotify('🔴 Alerte #' + num, type + ' · ' + alert.addr, 'crit');
+}
+
+function endSending(){
+  document.getElementById('scr-sending').style.display = 'none';
+  const n = dossierCount;
+  const smsMap = {
+    'SOS géolocalisé': '✅ Alerte #221-2026-' + n + ' reçue. Secours en route. ETA < 8 min. Restez en ligne.',
+    'Alerte silencieuse': '✅ Alerte silencieuse #221-2026-' + n + ' reçue. Police et SAMU dispatchés. Ne bougez pas.',
+    'Mode Témoin': '✅ Signalement #221-2026-' + n + ' reçu. Secours envoyés. Merci pour votre vigilance.',
+    'Signalement refus soins': '✅ Refus signalé #RS-2026-' + n + '. Patient orienté CHU Dantec. Dossier → Min. Santé.',
+    'Trajet Sécurisé': '✅ Trajet sécurisé activé #221-2026-' + n + '. Alerte automatique dans ' + trajetDur + ' min si pas de retour.',
+    'Disponibilité volontaire': '✅ Volontaire 221 enregistré. Vous serez alerté si une urgence proche correspond à votre profil.',
+  };
+  const msg = smsMap[lastAlertMode] || '✅ Alerte reçue · Dossier #221-2026-' + n;
+  showSMS(msg);
+}
+
+function showSMS(msg){
+  const el = document.getElementById('sms-notif');
+  document.getElementById('sms-body').textContent = msg;
+  document.getElementById('sms-time').textContent = new Date().toLocaleTimeString('fr-FR');
+  el.style.display = 'flex';
+  setTimeout(()=> el.style.display = 'none', 5000);
+}
+
+// ═══ TIMELINE ═══
+function addTL(d, t, txt){ timeline.push({d,t,txt}); renderTimeline(); }
+
+function renderTimeline(){
+  const el = document.getElementById('tl-list');
+  if(!el) return;
+  el.innerHTML = timeline.length ? timeline.map((t,i)=>`
+    <div class="tl-item">
+      <div>
+        <div class="tl-d ${t.d||'x'}"></div>
+        ${i<timeline.length-1?'<div style="width:1px;background:var(--border);min-height:10px;margin:3px auto 0"></div>':''}
+      </div>
+      <div style="flex:1;margin-left:6px">
+        <div class="tl-t">${t.t}</div>
+        <div class="tl-tx">${t.txt}</div>
+      </div>
+    </div>`).join('') : '<div style="font-size:10px;color:var(--muted)">Aucun événement.</div>';
+}
+
+// ═══ COMPTEURS ═══
+function updateCounters(){
+  const n = alerts.filter(a=>a.status==='new').length;
+  const p = alerts.filter(a=>a.status==='prog').length;
+  const d = alerts.filter(a=>a.status==='done').length;
+  document.getElementById('c-new').textContent = n;
+  document.getElementById('c-prog').textContent = p;
+  document.getElementById('c-done').textContent = d;
+  document.getElementById('cq-count').textContent = alerts.length + ' alerte' + (alerts.length>1?'s':'');
+}
+
+// ═══ QUEUE ═══
+function renderQueue(){
+  const el = document.getElementById('cq-list');
+  if(!alerts.length){ el.innerHTML='<div style="padding:20px 10px;text-align:center;font-size:10px;color:var(--muted)">En attente d\'alertes...<br>Utilisez l\'application → pour simuler</div>'; return; }
+  el.innerHTML = alerts.map((a,i)=>`
+    <div class="cqi ${a.status==='new'?'crit':a.status==='done'?'done':'urg'} ${selectedAlert&&selectedAlert.id===a.id?'active':''}" onclick="selectAlert(${i})">
+      <div class="cqi-ico">${a.ico}</div>
+      <div class="cqi-info">
+        <div class="cqi-t">${a.type}</div>
+        <div class="cqi-s">${a.addr}</div>
+        <span class="${a.status==='new'?'badge-new-c':a.status==='done'?'badge-done-c':'badge-prog-c'}">${a.status==='new'?'Nouveau':a.status==='done'?'Résolu':'En cours'}</span>
+      </div>
+      <div class="cqi-time">${a.timeStr}</div>
+    </div>`).join('');
+}
+
+function selectAlert(i){
+  selectedAlert = alerts[i];
+  timeline = selectedAlert._timeline || [];
+  renderQueue();
+  renderFiche();
+  renderTimeline();
+}
+
+// ═══ FICHE CNRD ═══
+function renderFiche(){
+  if(!selectedAlert){ document.getElementById('cnrd-empty').style.display='block'; document.getElementById('cnrd-fiche-content').style.display='none'; return; }
+  const a = selectedAlert;
+  document.getElementById('cnrd-empty').style.display = 'none';
+  document.getElementById('cnrd-fiche-content').style.display = 'block';
+
+  const trajetExtra = a.mode === 'Trajet Sécurisé' ? `
+    <div class="fr"><span class="fl">Contact confiance</span><span class="fv g">${a.trajetContact}</span></div>
+    <div class="fr"><span class="fl">Durée activée</span><span class="fv">${a.trajetDur} minutes</span></div>` : '';
+
+  const volExtra = a.mode === 'Disponibilité volontaire' ? `
+    <div class="fr"><span class="fl">Compétence</span><span class="fv g">${a.type}</span></div>
+    <div class="fr"><span class="fl">Rayon</span><span class="fv">1 km autour du volontaire</span></div>
+    <div class="fr"><span class="fl">Statut</span><span class="fv g">✅ Actif dans le réseau 221</span></div>` : '';
+
+  const refusExtra = a.mode === 'Signalement refus soins' ? `
+    <div class="fr"><span class="fl">Min. Santé</span><span class="fv g">✅ Notifié automatiquement</span></div>
+    <div class="fr"><span class="fl">Ordre Médecins</span><span class="fv g">✅ Notifié automatiquement</span></div>` : '';
+
+  document.getElementById('cnrd-fiche-content').innerHTML = `
+    <div class="ab ${a.pcls}">
+      <div class="ab-i ${a.pcls}">${a.ico}</div>
+      <div>
+        <div class="ab-type ${a.pcls}">${a.type}</div>
+        <div class="ab-meta">${a.sig}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px">Dossier #221-2026-${a.id} · ${a.ts}</div>
+      </div>
+      <div class="prio ${a.pcls}">${a.pcls==='crit'?'CRITIQUE':a.pcls==='info'?'INFO':'URGENT'}</div>
+    </div>
+
+    <div class="bl">
+      <div class="bl-title">Source — App 221</div>
+      <div class="fr"><span class="fl">Mode</span><span class="fv"><span class="src-chip">📱 ${a.sig}</span></span></div>
+      <div class="fr"><span class="fl">GPS</span><span class="fv mono">${a.gps}</span></div>
+
+      <div class="fr"><span class="fl">Adresse</span><span class="fv">${a.addr}</span></div>
+      <div class="fr"><span class="fl">Précision</span><span class="fv g">±8m · Signal fort</span></div>
+      <div class="fr"><span class="fl">Timestamp</span><span class="fv mono">${a.ts}</span></div>
+      ${trajetExtra}${volExtra}${refusExtra}
+    </div>
+
+    <div class="bl">
+      <div class="bl-title">Classification</div>
+      <div class="fr"><span class="fl">Type</span><span class="fv r">${a.type}</span></div>
+      <div class="fr"><span class="fl">Priorité</span><span class="fv">${a.pcls==='crit'?'🔴 CRITIQUE':a.pcls==='info'?'🔵 INFO':'🟡 URGENT'}</span></div>
+      <div class="fr"><span class="fl">Statut</span><span class="fv">${a.status==='new'?'🆕 Nouveau':a.status==='done'?'✅ Résolu':'⏳ En cours'}</span></div>
+    </div>
+
+    ${a.mode !== 'Disponibilité volontaire' ? `
+    <div class="bl">
+      <div class="bl-title">🖊 Notes opérateur — Dispatch</div>
+      <textarea id="note-dispatch" rows="2" style="width:100%;background:#111f11;border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:inherit;padding:7px;resize:none;outline:none" placeholder="Description de la situation, ressources identifiées..."></textarea>
+    </div>` : ''}
+
+    <div class="btn-row">
+      <button class="cb pr" onclick="doDispatch()">📡 Dispatcher</button>
+      ${a.mode === 'Trajet Sécurisé' ? '<button class="cb bl" onclick="smsTrajet()">💬 SMS dual</button>' : '<button class="cb bl" onclick="markProg()">⏳ En cours</button>'}
+      <button class="cb dg" onclick="escalate()">⚠️ Escalader</button>
+    </div>
+
+    <div class="bl">
+      <div class="bl-title">🖊 Notes clôture</div>
+      <textarea id="note-cloture" rows="2" style="width:100%;background:#111f11;border:0.5px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;font-family:inherit;padding:7px;resize:none;outline:none" placeholder="Résumé intervention, ressources mobilisées, résultat..."></textarea>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="cb" style="flex:1" onclick="markDone()">✅ Clôturer</button>
+        <button class="cb" style="flex:1" onclick="sendSMSConfirm()">💬 SMS citoyen</button>
+      </div>
+    </div>`;
+}
+
+// ═══ ACTIONS OPÉRATEUR ═══
+function doDispatch(){
+  if(!selectedAlert) return;
+  const a = selectedAlert;
+  const note = document.getElementById('note-dispatch') ? document.getElementById('note-dispatch').value.trim() : '';
+  const dispatched = {
+    'SOS géolocalisé'        : 'SAMU-01 dispatché · CHU Dantec préparé · ETA 4 min',
+    'Alerte silencieuse'     : 'Police GP-07 + SAMU-01 dispatchés · ETA 3 min',
+    'Mode Témoin'            : 'BNSP-Dieuppeul + SAMU-03 dispatchés · ETA 6 min',
+    'Signalement refus soins': 'SAMU-01 · Orientation CHU Dantec · Min. Santé notifié',
+    'Trajet Sécurisé'        : 'Police GP-07 envoyée sur dernière position · ETA 5 min',
+    'Disponibilité volontaire': 'Volontaire activé · Alerte envoyée si urgence dans rayon',
+  };
+  const msg = dispatched[a.mode] || 'Secours dispatchés · ETA < 8 min';
+  const fullMsg = msg + (note ? ' · Note : ' + note : '');
+  addTL('g', new Date().toLocaleTimeString('fr-FR'), 'Dispatch OP-07 · ' + fullMsg);
+  a.status = 'prog';
+  updateCounters(); renderQueue();
+
+  updateFlux('✅ Dispatch #221-2026-' + a.id + ' — ' + msg);
+  cnrdNotify('✅ Dispatch confirmé', '#' + a.id + ' · ' + msg, '');
+
+  setTimeout(()=>{
+    showSMS('✅ CNRD-221 : ' + msg + '\nDossier #221-2026-' + a.id);
+    addTL('g', new Date().toLocaleTimeString('fr-FR'), 'SMS confirmation envoyé au citoyen');
+    renderTimeline();
+  }, 1400);
+  renderFiche();
+}
+
+function smsTrajet(){
+  if(!selectedAlert || selectedAlert.mode !== 'Trajet Sécurisé') return;
+  const a = selectedAlert;
+  const noteEl = document.getElementById('note-cloture');
+  const note = noteEl ? noteEl.value.trim() : '';
+
+  const msgUser = '⚠️ CNRD-221 : Trajet Sécurisé #221-2026-' + a.id + ' — Vos secours sont en route. Police GP-07 dispatché.' + (note ? ' ' + note : '');
+  const msgContact = '⚠️ 221 SÉNÉGAL : Alerte Trajet Sécurisé. Votre contact [' + a.trajetContact + '] n\'a pas désactivé son trajet dans les ' + a.trajetDur + ' min. Police dispatchée. Dossier #221-2026-' + a.id;
+
+  showSMS(msgUser);
+  setTimeout(()=>showSMS('📤 SMS contact confiance envoyé à ' + a.trajetContact + ' — ' + msgContact.substring(0,80) + '...'), 2500);
+
+  addTL('g', new Date().toLocaleTimeString('fr-FR'), 'SMS envoyé à l\'utilisateur ET au contact de confiance (' + a.trajetContact + ')');
+  renderTimeline();
+  cnrdNotify('💬 SMS dual envoyé', 'Utilisateur + Contact ' + a.trajetContact, '');
+}
+
+function markProg(){
+  if(!selectedAlert) return;
+  selectedAlert.status = 'prog';
+  addTL('a', new Date().toLocaleTimeString('fr-FR'), 'Dossier passé "En cours" · OP-07');
+  updateCounters(); renderQueue(); renderFiche();
+}
+
+function markDone(){
+  if(!selectedAlert) return;
+  const noteEl = document.getElementById('note-cloture');
+  const note = noteEl ? noteEl.value.trim() : '';
+  selectedAlert.status = 'done';
+  addTL('x', new Date().toLocaleTimeString('fr-FR'), 'Dossier clôturé · OP-07' + (note ? ' · ' + note : ''));
+  updateCounters(); renderQueue(); renderFiche();
+  updateFlux('✅ Dossier #221-2026-' + selectedAlert.id + ' clôturé · ' + new Date().toLocaleTimeString('fr-FR'));
+}
+
+function escalate(){
+  if(!selectedAlert) return;
+  addTL('a', new Date().toLocaleTimeString('fr-FR'), 'Escalade → Superviseur de garde · Poste 1 · Dossier #221-2026-' + selectedAlert.id);
+  cnrdNotify('⚠️ Escalade transmise', 'Superviseur Poste 1 · #' + selectedAlert.id, 'urg');
+  renderTimeline();
+}
+
+function sendSMSConfirm(){
+  if(!selectedAlert) return;
+  showSMS('📋 CNRD-221 : Dossier #221-2026-' + selectedAlert.id + ' · Statut : ' +
+    (selectedAlert.status==='done'?'Clôturé ✅':selectedAlert.status==='prog'?'En cours ⏳':'Nouveau 🆕'));
+  addTL('g', new Date().toLocaleTimeString('fr-FR'), 'SMS de mise à jour envoyé manuellement au citoyen');
+  renderTimeline();
+}
+
+// ═══ RESSOURCES ═══
+function renderResources(){
+  const el = document.getElementById('res-list');
+  if(!el) return;
+  el.innerHTML = RESOURCES.map(r=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--border)">
+      <div style="width:28px;height:28px;border-radius:6px;background:${r.cls==='samu'?'#0f2d0f':r.cls==='fire'?'#2d200a':'#0a1a2d'};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">${r.ico}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:600;color:var(--sub)">${r.name}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:1px">${r.det}</div>
+      </div>
+      <span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:10px;${r.ok?'background:rgba(74,222,128,.1);color:#4ade80;border:0.5px solid rgba(74,222,128,.2)':'background:rgba(248,113,113,.1);color:#f87171;border:0.5px solid rgba(248,113,113,.2)'}">${r.st}</span>
+    </div>`).join('');
+}
+
+// ═══ TABS CNRD ═══
+function cfTab(id, btn){
+  document.querySelectorAll('.cf-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.cf-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('cfp-'+id).classList.add('active');
+}
+
+// ═══ FLUX & NOTIFS ═══
+function updateFlux(msg){ document.getElementById('flux-msg').textContent = msg; }
+function cnrdNotify(title, body, cls){
+  const el = document.createElement('div');
+  el.className = 'cn' + (cls?' '+cls:'');
+  el.innerHTML = `<div class="cn-title">${title}</div><div class="cn-body">${body}</div>`;
+  document.getElementById('cnrd-notif').appendChild(el);
+  setTimeout(()=>el.remove(), 4000);
+}
+
+</script>
+</body>
+</html>
